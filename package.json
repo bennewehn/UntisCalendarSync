@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "googleapis": "^39.2.0",
+    "webuntis": "^1.18.0"
+  }
+}
