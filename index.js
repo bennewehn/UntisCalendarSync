@@ -1,77 +1,100 @@
+const fs = require('fs')
 const WebUntis = require('webuntis');
-const { google } = require('googleapis');
 const { GoogleAuth } = require('google-auth-library');
+const { google } = require('googleapis');
 
-const untisCredentials = require("./untis-credentials.json")
-const calendarData = require("./calendar-data.json")
-const untis = new WebUntis(untisCredentials.school, untisCredentials.username, untisCredentials.password, untisCredentials.domain)
+let config = JSON.parse(fs.readFileSync('config.json'))
+let untisCred = JSON.parse(fs.readFileSync('untis-credentials.json'))
+
+const untis = new WebUntis(
+  untisCred.school,
+  untisCred.username,
+  untisCred.password,
+  untisCred.domain
+)
+
 const calendar = google.calendar({ version: "v3" });
 
+const auth = new GoogleAuth({
+  keyFilename: 'google-credentials.json',
+  scopes: ["https://www.googleapis.com/auth/calendar"]
+})
 
-untis.login().then(() => {
+const authClient = auth.getClient().then(() => {
+  getCalEvents().then((events) => addEvents(events))
+})
 
-
-  const auth = new GoogleAuth({
-    keyFilename: 'google-credentials.json',
-    scopes: ["https://www.googleapis.com/auth/calendar"]
-  })
-
+async function getCalEvents() {
+  await untis.login()
   const today = new Date()
-  for (let i = 0; i < 7; i++) {
-    let day = new Date()
-    day.setDate(today.getDate() + i)
+  today.setMonth(today.getMonth() - 1)
+  let endtime = new Date(today.getTime())
+  endtime.setDate(today.getDate() + config.daysToSync - 1)
 
-    if (!(day.getDay() == 6 || day.getDay() == 0)) {
-      untis.getOwnTimetableFor(day).then((timetable) => {
-        let minTime = new Date()
-        minTime.setDate(today.getDate() + 100)
-        let maxTime = 0
+  let events = []
+  let timetable = await untis.getOwnTimetableForRange(today, endtime)
 
-        for (let element of timetable) {
-          if (element.su.length > 0)
-            if (element.su[0].name == "SPA BG" || element.su[0].name == "F BG")
-              continue
-          if (element.code == "cancelled")
-            continue
-          let startTime = WebUntis.convertUntisDate(element.date)
-          startTime = WebUntis.convertUntisTime(element.startTime, startTime)
-          let endtime = WebUntis.convertUntisTime(element.endTime, startTime)
-          if (startTime < minTime) 
-            minTime = startTime
-          if (endtime > maxTime) 
-            maxTime = endtime
-        }
+  timetable.forEach(element => {
+    baseDate = WebUntis.convertUntisDate(element.date)
+    data = {
+      summary: (element.su[0]) ? element.su[0].longname : "unkown",
+      start: {
+        dateTime: WebUntis.convertUntisTime(element.startTime, baseDate)
+      },
+      end: {
+        dateTime: WebUntis.convertUntisTime(element.endTime, baseDate)
+      },
+      description: `room: ${(element.ro[0]) ? element.ro[0].name : "unknown"} 
+teacher: ${(element.te[0]) ? element.te[0].name : "unkown"}` +
+        `(${(element.te[0]) ? element.te[0].longname : "unkown"})`
+    }
+    if (!config.subjectBlacklist.includes(data.summary)) events.push(data)
+  })
+  return events
+}
 
-        let calEvent = {
-          'summary': "Schule",
-          'start': {
-            'dateTime': minTime,
-            'dateZone': "Europe/Berlin"
-          },
-          'end': {
-            'dateTime': maxTime,
-            'dateZone': "Europe/Berlin"
-          },
-        }
+async function addEvents(events) {
 
-        const authClient = auth.getClient()
-        authClient.then(() => {
-          calendar.events.insert({
+  let currEvents = (await getEvents()).data.items
+
+  for (let i = 0; i < events.length; i++) {
+    for (let j = 0; j < currEvents.length; j++) {
+      if (events[i].start.dateTime >= new Date(currEvents[j].start.dateTime) &&
+        events[i].start.dateTime <= new Date(currEvents[j].end.dateTime)) {
+        try {
+          const res = await calendar.events.delete({
             auth: auth,
-            calendarId: calendarData.id,
-            resource: calEvent,
-          }, function (err, event) {
-            if (err) {
-              console.log('There was an error contacting the Calendar service: ' + err)
-              return
-            }
-            console.log('Event created: %s', event.data)
-          }
-          )
-        })
-
-      });
-
+            calendarId: config.calendarID,
+            eventId: currEvents[j].id
+          })
+        }
+        catch { }
+      }
     }
   }
-})
+
+
+  events.forEach(element => {
+    calendar.events.insert({
+      auth: auth,
+      calendarId: config.calendarID,
+      resource: element,
+    },
+      function (err, event) {
+        if (err) {
+          console.log('There was an error contacting the Calendar service: ' + err)
+          return
+        }
+        console.log('Event created: %s', event.data)
+      })
+  })
+}
+
+async function getEvents() {
+  return await calendar.events.list({
+    auth: auth,
+    calendarId: config.calendarID,
+    timeMin: (new Date()).toISOString(),
+    singleEvents: true,
+  })
+}

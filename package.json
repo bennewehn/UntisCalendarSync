@@ -1,6 +1,24 @@
 {
   "dependencies": {
-    "googleapis": "^39.2.0",
+    "google-auth-library": "^8.1.1",
+    "googleapis": "^105.0.0",
     "webuntis": "^1.18.0"
-  }
+  },
+  "name": "untiscalendarsync",
+  "version": "1.0.0",
+  "description": "Sync Units to google calendar",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FireBlaze9311/UntisCalendarSync.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FireBlaze9311/UntisCalendarSync/issues"
+  },
+  "homepage": "https://github.com/FireBlaze9311/UntisCalendarSync#readme"
 }
