@@ -27,7 +27,7 @@ const authClient = auth.getClient().then(() => {
 async function getCalEvents() {
   await untis.login()
   const today = new Date()
-  today.setMonth(today.getMonth() - 1)
+  today.setMonth(today.getMonth())
   let endtime = new Date(today.getTime())
   endtime.setDate(today.getDate() + config.daysToSync - 1)
 
@@ -67,6 +67,7 @@ async function addEvents(events) {
             calendarId: config.calendarID,
             eventId: currEvents[j].id
           })
+          console.log("Event deleted: %s", res.data)
         }
         catch { }
       }
