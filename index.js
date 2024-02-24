@@ -48,7 +48,7 @@ async function getCalEvents() {
 teacher: ${(element.te[0]) ? element.te[0].name : "unkown"}` +
         `(${(element.te[0]) ? element.te[0].longname : "unkown"})`
     }
-    if (!config.subjectBlacklist.includes(data.summary)) events.push(data)
+    if (!config.subjectBlacklist.includes(data.summary) && element.code !== 'cancelled') events.push(data)
   })
   return events
 }
