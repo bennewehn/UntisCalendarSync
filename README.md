@@ -9,9 +9,7 @@ Sync Untis to google calendar
 
 ## Installation
 ```
-npm install webuntis 
-npm install googleapis
-npm install google-auth-library
+npm install
 ```
 
 ## Setup
