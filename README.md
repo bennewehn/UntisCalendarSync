@@ -40,3 +40,8 @@ Configuration in config.json
    "subjectBlacklist": []
 }
 ```
+
+## Start
+```
+npm run
+```
